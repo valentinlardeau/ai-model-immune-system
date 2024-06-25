@@ -1,13 +1,11 @@
 ##################    Import   #######################################
 import numpy as np
+import tensorflow as tf
 from tensorflow.python.keras.models import load_model
 from White_box_attack import fgsm_attack, pgd_attack, deepfool_attack
-import tensorflow as tf
 
 
 ##################   Function  #######################################
-
-
 
 """
 brief  : generating random images as auto-reactive cells
@@ -18,25 +16,22 @@ input  : model : model we want to attack
 return : np table of random adversarial image
 """
 def generate_auto_reactive_cell(model, attack, cell_number, image_size, epsilon):
-  images = np.random.rand(cell_number, image_size, image_size, 3)  # Generate random images
-  auto_reactive_cells = []
-  for i in range(cell_number):
-    # Convert image to a tf.Tensor
-    image_tensor = tf.convert_to_tensor(images[i][np.newaxis, ...])
-    # Get predicted class label
-    predictions = model.predict(image_tensor)
-    predicted_class = tf.argmax(predictions, axis=1)
-    # One-hot encode the predicted class label
-    y = tf.one_hot(predicted_class, model.output_shape[-1])
-    # Generate adversarial image using the attack function
-    adversarial_image = attack(model, image_tensor, y, epsilon=epsilon)
-    # Convert adversarial image back to NumPy array
-    adversarial_image = adversarial_image.numpy()
-    auto_reactive_cells.append(adversarial_image)
-  return np.array(auto_reactive_cells)
-
-
-
+    images = np.random.rand(cell_number, image_size, image_size, 3)  # Generate random images
+    auto_reactive_cells = []
+    for i in range(cell_number):
+        # Convert image to a tf.Tensor
+        image_tensor = tf.convert_to_tensor(images[i][np.newaxis, ...], dtype=tf.float32)
+        # Get predicted class label
+        predictions = model(image_tensor, training=False)
+        predicted_class = tf.argmax(predictions, axis=1)
+        # One-hot encode the predicted class label
+        y = tf.one_hot(predicted_class, depth=model.output_shape[-1])
+        # Generate adversarial image using the attack function
+        adversarial_image = attack(model, image_tensor, y, epsilon=epsilon)
+        # Convert adversarial image back to NumPy array
+        adversarial_image = adversarial_image.numpy()
+        auto_reactive_cells.append(adversarial_image)
+    return np.array(auto_reactive_cells)
 
 """
 brief  : retrieving the deficient neurons in the model through negative selection algorithm
@@ -46,18 +41,15 @@ input  : model : model we want to test
 return : a list of harmful neurons
 """
 def negative_selection(model, auto_reactive_cells, activation_threshold):
-  harmful_neurons = []
-  for image in auto_reactive_cells:
-    # Predict activation on the image 
-    activation = model.predict(image[...])
+    harmful_neurons = []
+    for image in auto_reactive_cells:
+        # Predict activation on the image 
+        activation = model(image[...], training=False)
 
-    for i, activation_neuron in enumerate(activation[0]):
-      if activation_neuron > activation_threshold:
-        harmful_neurons.append(i)
-  return harmful_neurons
-
-
-
+        for i, activation_neuron in enumerate(activation[0]):
+            if activation_neuron > activation_threshold:
+                harmful_neurons.append(i)
+    return harmful_neurons
 
 def remove(model, harmful_neurons):
     # Iterate through each layer in the model
@@ -76,16 +68,11 @@ def remove(model, harmful_neurons):
             else:
                 print(f"Skipping layer {layer.name} with {len(layer.get_weights())} parameters")
 
-
-
-
-
 ##################   Test   ############################################################
-
 
 model = load_model('mnist_vgg16_model.h5')
 
-# Générer des cellules auto-réactives
+# Generate auto-reactive cells
 cellules_auto_reactives = generate_auto_reactive_cell(model, fgsm_attack, 100, 32, 0.1)
 bad_neurons = negative_selection(model, cellules_auto_reactives, 0.5)
 print(bad_neurons)

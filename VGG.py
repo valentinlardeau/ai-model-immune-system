@@ -4,7 +4,7 @@ import numpy as np
 from tensorflow.python.keras.models import Sequential
 from tensorflow.python.keras.layers import Dense, Flatten
 from keras import optimizers
-from tensorflow.python.keras.utils import to_categorical
+from keras.src.utils import to_categorical
 from PIL import Image
 from tensorflow.python.keras.models import load_model
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, precision_score
@@ -44,7 +44,6 @@ def data_MNIST():
     x_train = np.stack((x_train,) * 3, axis=-1) # proper data for VGG-16
     x_test = np.stack((x_test,) * 3, axis=-1)
     return x_train, x_test, y_train, y_test
-
 
 
 """
