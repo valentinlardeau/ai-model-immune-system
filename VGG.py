@@ -3,13 +3,14 @@
 import numpy as np
 from tensorflow.python.keras.models import Sequential
 from tensorflow.python.keras.layers import Dense, Flatten
-from keras import optimizers
+from tensorflow.python.keras import optimizers
 from keras.src.utils import to_categorical
 from PIL import Image
 from tensorflow.python.keras.models import load_model
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, precision_score
 from keras.src.applications.vgg16 import VGG16
 from keras.src.datasets import mnist
+import tensorflow as tf
 
 
 ##############   Function   #############################
@@ -93,35 +94,35 @@ input  : x_test : data for the test part for x
          model : model we want to use 
 """
 def result(x_test, y_test, model):
-    # predictions
-    y_pred = model.predict(x_test)
-    y_pred_classes = np.argmax(y_pred, axis=1)
-    y_true = np.argmax(y_test, axis=1)
-    # confusion matrix
+    # Convertir les données en tenseurs TensorFlow
+    x_test = tf.convert_to_tensor(x_test, dtype=tf.float32)
+    y_test = tf.convert_to_tensor(y_test, dtype=tf.float32)
+    
+    # Prédictions
+    y_pred = model(x_test, training=False)
+    y_pred_classes = np.argmax(y_pred.numpy(), axis=1)
+    y_true = np.argmax(y_test.numpy(), axis=1)
+    
+    # Matrice de confusion
     conf_matrix = confusion_matrix(y_true, y_pred_classes)
     print("Matrix:")
     print(conf_matrix)
-    # classification report
+    
+    # Rapport de classification
     class_report = classification_report(y_true, y_pred_classes)
-    print("\classification report:")
+    print("\nClassification report:")
     print(class_report)
-    # calcul of valuable intels
+    
+    # Calcul des métriques
     accuracy = accuracy_score(y_true, y_pred_classes)
-    recall = conf_matrix.diagonal() / conf_matrix.sum(axis=1)
-    f1_score = 2 * (accuracy * recall) / (accuracy + recall)
+    recall = np.diag(conf_matrix) / np.sum(conf_matrix, axis=1)
+    f1_scores = 2 * (accuracy * recall) / (accuracy + recall)
     precision_macro = precision_score(y_true, y_pred_classes, average='macro')
     precision_micro = precision_score(y_true, y_pred_classes, average='micro')
-    # print of results
-    print("\naccuracy by classe:")
-    print(accuracy)
-    print("\nRecall by classe:")
-    print(recall)
-    print("\nF1-score by classe:")
-    print(f1_score)
-    print("\nprecision (macro) by classe:")
-    print(precision_macro)
-    print("\nprecision (micro) by classe:")
-    print(precision_micro)
+    
+    return [accuracy, recall.mean(), f1_scores.mean(), precision_macro, precision_micro]
+
+
 
 
 ##############   Test part   ########################
